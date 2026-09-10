@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     working_dir: /var/www/html
+    command: sh -c "chown -R www-data:www-data storage bootstrap/cache && exec php-fpm"
     volumes:
       - .:/var/www/html
     environment:
