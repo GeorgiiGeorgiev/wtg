@@ -10,12 +10,14 @@ services:
       - |
         set -e
         test -f .env || cp .env.example .env
-        composer install --no-interaction --prefer-dist
+        if [ ! -f vendor/autoload.php ] || [ composer.lock -nt vendor/autoload.php ]; then
+          composer install --no-interaction --prefer-dist
+        fi
         if ! grep -q '^APP_KEY=.' .env; then
-          php artisan key:generate --force
+          php artisan key:generate
         fi
         php artisan optimize:clear
-        php artisan migrate --seed --force
+        php artisan migrate --seed
         chown -R www-data:www-data storage bootstrap/cache
     volumes:
       - .:/var/www/html
