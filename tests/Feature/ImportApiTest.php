@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\ProcessImport;
 use App\Models\Import;
 use App\Models\Offer;
+use App\Models\Property;
 use App\Models\Supplier;
 use App\Services\ImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,6 +47,7 @@ class ImportApiTest extends TestCase
         Queue::assertPushed(ProcessImport::class, 1);
         $this->assertDatabaseCount('imports', 1);
         $this->assertDatabaseCount('offers', 1);
+        $this->assertDatabaseCount('import_history', 1);
 
         $this->getJson("/api/imports/{$importId}")
             ->assertOk()
@@ -75,22 +77,68 @@ class ImportApiTest extends TestCase
         $older = Import::factory()->for($supplier)->create([
             'sent_at' => now()->subDays(2),
             'total_offers' => 1,
-            'payload' => [$this->offerPayload(60000)],
+            'payload' => [$this->offerPayload(60000, 'BCN-OLDER')],
         ]);
+        $olderProperty = Property::factory()->create(['code' => 'BCN-OLDER']);
+        $older->processedOffers()->attach(
+            Offer::where('external_id', 'offer-1')->firstOrFail(),
+            [
+                'supplier_id' => $supplier->id,
+                'property_id' => $olderProperty->id,
+            ],
+        );
         $service->processNextBatch($older);
 
         $offer = Offer::where('external_id', 'offer-1')->firstOrFail();
 
         $this->assertSame(70000, $offer->price);
         $this->assertSame($newer->id, $offer->import_id);
+        $this->assertTrue($first->processedOffers()->whereKey($offer->id)->exists());
+        $this->assertTrue($newer->processedOffers()->whereKey($offer->id)->exists());
+        $this->assertTrue($older->processedOffers()->whereKey($offer->id)->exists());
+        $this->assertNotNull($newer->processedOffers()->firstOrFail()->pivot->created_at);
+        $this->assertDatabaseCount('import_history', 3);
+        $this->assertSame(
+            $olderProperty->id,
+            $older->processedOffers()->firstOrFail()->pivot->property_id,
+        );
+        $this->assertSame(
+            $supplier->id,
+            $older->processedOffers()->firstOrFail()->pivot->supplier_id,
+        );
     }
 
-    private function offerPayload(int $price): array
+    public function test_duplicate_offer_ids_in_one_import_are_rejected(): void
+    {
+        Queue::fake();
+
+        Supplier::factory()->create(['code' => 'supplier-a']);
+
+        $this->postJson('/api/imports', [
+            'supplier' => 'supplier-a',
+            'external_import_id' => 'import-with-duplicates',
+            'sent_at' => now()->toISOString(),
+            'offers' => [
+                $this->offerPayload(72500),
+                $this->offerPayload(75000),
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'offers.0.external_id',
+                'offers.1.external_id',
+            ]);
+
+        Queue::assertNothingPushed();
+        $this->assertDatabaseCount('imports', 0);
+    }
+
+    private function offerPayload(int $price, string $propertyCode = 'BCN-0001'): array
     {
         return [
             'external_id' => 'offer-1',
             'property' => [
-                'code' => 'BCN-0001',
+                'code' => $propertyCode,
                 'name' => 'Barcelona Apartment',
                 'city' => 'Barcelona',
             ],

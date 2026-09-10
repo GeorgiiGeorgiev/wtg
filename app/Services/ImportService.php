@@ -11,9 +11,7 @@ class ImportService
 {
     private const BATCH_SIZE = 100;
 
-    public function __construct(private readonly OfferService $offerService)
-    {
-    }
+    public function __construct(private readonly OfferService $offerService) {}
 
     public function create(array $data): Import
     {
@@ -61,7 +59,14 @@ class ImportService
             ]);
 
             foreach ($offers as $offer) {
-                $this->offerService->store($import, $offer);
+                $storedOffer = $this->offerService->store($import, $offer);
+
+                DB::table('import_history')->insertOrIgnore([
+                    'import_id' => $import->id,
+                    'supplier_id' => $import->supplier_id,
+                    'offer_id' => $storedOffer->offer->id,
+                    'property_id' => $storedOffer->property->id,
+                ]);
             }
 
             $processedOffers = $import->processed_offers + count($offers);
@@ -73,7 +78,7 @@ class ImportService
                 'completed_at' => $completed ? now() : null,
             ]);
 
-            if (!$completed) {
+            if (! $completed) {
                 ProcessImport::dispatch($import->id)->afterCommit();
             }
         });

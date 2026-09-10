@@ -2,23 +2,15 @@
 
 namespace App\Services;
 
+use App\Data\ImportedOffer;
 use App\Models\Import;
 use App\Models\Offer;
 use App\Models\Property;
 
 class OfferService
 {
-    public function store(Import $import, array $data): void
+    public function store(Import $import, array $data): ImportedOffer
     {
-        $offer = Offer::where('supplier_id', $import->supplier_id)
-            ->where('external_id', $data['external_id'])
-            ->lockForUpdate()
-            ->first();
-
-        if ($offer?->import()->where('sent_at', '>', $import->sent_at)->exists()) {
-            return;
-        }
-
         $property = Property::firstOrCreate(
             ['code' => $data['property']['code']],
             [
@@ -26,6 +18,15 @@ class OfferService
                 'city' => $data['property']['city'],
             ],
         );
+
+        $offer = Offer::where('supplier_id', $import->supplier_id)
+            ->where('external_id', $data['external_id'])
+            ->lockForUpdate()
+            ->first();
+
+        if ($offer?->import()->where('sent_at', '>', $import->sent_at)->exists()) {
+            return new ImportedOffer($offer, $property);
+        }
 
         $attributes = [
             'property_id' => $property->id,
@@ -42,13 +43,15 @@ class OfferService
         if ($offer) {
             $offer->update($attributes);
 
-            return;
+            return new ImportedOffer($offer, $property);
         }
 
-        Offer::create([
+        $offer = Offer::create([
             'supplier_id' => $import->supplier_id,
             'external_id' => $data['external_id'],
             ...$attributes,
         ]);
+
+        return new ImportedOffer($offer, $property);
     }
 }

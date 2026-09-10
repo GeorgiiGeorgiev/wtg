@@ -36,7 +36,7 @@ docker compose exec app php artisan migrate:fresh --seed
 
 ## Import idempotency
 
-The database uniquely identifies an import by `supplier_id + external_import_id`. A repeated request returns the existing import and does not queue another job. Offers are uniquely identified by `supplier_id + external_id`; newer imports update the existing offer, while an older `sent_at` value cannot overwrite newer data.
+The database uniquely identifies an import by `supplier_id + external_import_id`. A repeated request returns the existing import and does not queue another job. Offers are uniquely identified by `supplier_id + external_id`; newer imports update the existing offer, while an older `sent_at` value cannot overwrite newer data. The `import_history` table preserves each processed import's supplier, offer, and property associations.
 
 ## Safe reservations
 

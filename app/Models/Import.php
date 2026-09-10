@@ -6,6 +6,7 @@ use App\Models\Traits\HasPublicUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Import extends Model
@@ -49,5 +50,11 @@ class Import extends Model
     public function offers(): HasMany
     {
         return $this->hasMany(Offer::class);
+    }
+
+    public function processedOffers(): BelongsToMany
+    {
+        return $this->belongsToMany(Offer::class, 'import_history')
+            ->withPivot(['supplier_id', 'property_id', 'created_at']);
     }
 }
