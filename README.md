@@ -24,3 +24,7 @@ Run the tests with:
 ```bash
 docker compose exec app php artisan test
 ```
+
+## Safe reservations
+
+Reservation creation runs inside a database transaction and locks the selected offer row with `SELECT ... FOR UPDATE`. Concurrent requests for the same offer are processed one at a time. After the first reservation commits, the next request reads the updated `available_units` value and cannot reserve an unavailable unit.
