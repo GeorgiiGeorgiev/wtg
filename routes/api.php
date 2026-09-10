@@ -9,3 +9,7 @@ Route::post('imports', [ImportController::class, 'store']);
 Route::get('imports/{import}', [ImportController::class, 'show']);
 Route::get('properties', [PropertyController::class, 'index']);
 Route::post('offers/{offer}/reservations', [ReservationController::class, 'store']);
+
+Route::any('{path?}', fn () => response()->json([
+    'message' => 'Not Found',
+], 404))->where('path', '.*');

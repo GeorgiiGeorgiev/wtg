@@ -2,6 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::any('{path?}', fn () => response()->json([
+    'message' => 'Not Found',
+], 404))->where('path', '.*');
