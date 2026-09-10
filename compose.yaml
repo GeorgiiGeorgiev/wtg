@@ -34,7 +34,7 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     working_dir: /var/www/html
-    command: php artisan queue:work --sleep=1 --tries=3 --timeout=120
+    command: php artisan queue:work --sleep=1 --tries=3 --timeout=60
     restart: unless-stopped
     stop_grace_period: 30s
     volumes:
