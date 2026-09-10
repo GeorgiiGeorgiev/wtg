@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Offer;
 use App\Models\Property;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class PropertyService
@@ -12,6 +13,9 @@ class PropertyService
 
     public function search(array $filters): LengthAwarePaginator
     {
+        $checkIn = Carbon::createFromFormat('Y-m-d', $filters['check_in'])->startOfDay();
+        $checkOut = Carbon::createFromFormat('Y-m-d', $filters['check_out'])->startOfDay();
+
         $offers = Offer::query()
             ->select([
                 'offers.id',
@@ -25,8 +29,8 @@ class PropertyService
             ->selectRaw(
                 'ROW_NUMBER() OVER (PARTITION BY offers.property_id ORDER BY offers.price, offers.id) AS offer_rank',
             )
-            ->where('offers.check_in', $filters['check_in'])
-            ->where('offers.check_out', $filters['check_out'])
+            ->where('offers.check_in', $checkIn)
+            ->where('offers.check_out', $checkOut)
             ->where('offers.max_guests', '>=', $filters['guests'])
             ->where('offers.available_units', '>', 0)
             ->where('offers.expires_at', '>', now());
