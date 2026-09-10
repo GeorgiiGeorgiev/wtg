@@ -29,9 +29,12 @@ services:
       DB_DATABASE: ${DB_DATABASE:-housing}
       DB_USERNAME: ${DB_USERNAME:-housing}
       DB_PASSWORD: ${DB_PASSWORD:-housing}
-      QUEUE_CONNECTION: database
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   app:
@@ -49,7 +52,8 @@ services:
       DB_DATABASE: ${DB_DATABASE:-housing}
       DB_USERNAME: ${DB_USERNAME:-housing}
       DB_PASSWORD: ${DB_PASSWORD:-housing}
-      QUEUE_CONNECTION: database
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
     depends_on:
       setup:
         condition: service_completed_successfully
@@ -82,10 +86,13 @@ services:
       DB_DATABASE: ${DB_DATABASE:-housing}
       DB_USERNAME: ${DB_USERNAME:-housing}
       DB_PASSWORD: ${DB_PASSWORD:-housing}
-      QUEUE_CONNECTION: database
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
     depends_on:
       setup:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
 
   db:
     image: mysql:8.4
@@ -104,5 +111,17 @@ services:
     volumes:
       - db-data:/var/lib/mysql
 
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - redis-data:/data
+
 volumes:
   db-data:
+  redis-data:

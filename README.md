@@ -12,7 +12,7 @@ With Docker running, execute:
 docker compose up -d --build
 ```
 
-This command performs the complete setup: it creates `.env` from `.env.example`, installs Composer dependencies, generates the application key, clears caches, runs migrations and seeders, and starts the queue worker. No additional setup commands are required. The API will be available at `http://localhost:8080`. The example environment file contains local defaults only and no real secrets.
+This command performs the complete setup: it creates `.env` from `.env.example`, installs Composer dependencies, generates the application key, starts MySQL and Redis, runs migrations and seeders, and starts the Redis queue worker. No additional setup commands are required. The API will be available at `http://localhost:8080`. The example environment file contains local defaults only and no real secrets.
 
 ## Maintenance commands
 
@@ -21,11 +21,12 @@ Run these commands only when intentionally needed:
 ```bash
 docker compose exec app php artisan migrate
 docker compose exec app php artisan db:seed
-docker compose exec app php artisan queue:work --tries=3 --timeout=60
 docker compose exec app php artisan test
+docker compose logs -f worker
+docker compose restart worker
 ```
 
-The Docker `worker` service starts the queue worker automatically.
+The Docker `worker` service processes queued imports automatically. A separate queue worker command is not required.
 
 To delete all local database data, recreate the schema, and run the seeders:
 

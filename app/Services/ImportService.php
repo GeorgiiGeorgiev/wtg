@@ -34,15 +34,10 @@ class ImportService
         );
 
         if ($import->wasRecentlyCreated) {
-            $this->enqueue($import);
+            ProcessImport::dispatch($import->id)->afterCommit();
         }
 
         return $import;
-    }
-
-    public function enqueue(Import $import): void
-    {
-        ProcessImport::dispatch($import->id)->afterCommit();
     }
 
     public function processNextBatch(Import $import): void
@@ -78,8 +73,8 @@ class ImportService
                 'completed_at' => $completed ? now() : null,
             ]);
 
-            if (! $completed) {
-                $this->enqueue($import);
+            if (!$completed) {
+                ProcessImport::dispatch($import->id)->afterCommit();
             }
         });
     }
