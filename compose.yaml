@@ -1,0 +1,71 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    environment:
+      APP_ENV: local
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-housing}
+      DB_USERNAME: ${DB_USERNAME:-housing}
+      DB_PASSWORD: ${DB_PASSWORD:-housing}
+      QUEUE_CONNECTION: database
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - .:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    working_dir: /var/www/html
+    command: php artisan queue:work --sleep=1 --tries=3 --timeout=120
+    restart: unless-stopped
+    stop_grace_period: 30s
+    volumes:
+      - .:/var/www/html
+    environment:
+      APP_ENV: local
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-housing}
+      DB_USERNAME: ${DB_USERNAME:-housing}
+      DB_PASSWORD: ${DB_PASSWORD:-housing}
+      QUEUE_CONNECTION: database
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-housing}
+      MYSQL_USER: ${DB_USERNAME:-housing}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-housing}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - db-data:/var/lib/mysql
+
+volumes:
+  db-data:
