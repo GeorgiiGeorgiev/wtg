@@ -23,11 +23,21 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(fn () => true);
 
-        $exceptions->respond(function ($response) {
+        $exceptions->respond(function ($response, \Throwable $exception) {
             if ($response->getStatusCode() === 500) {
-                return response()->json([
+                $data = [
                     'message' => 'Internal Server Error',
-                ], 500);
+                ];
+
+//                if (config('app.debug')) {
+                    $data += [
+                        'file' => $exception->getFile(),
+                        'line' => $exception->getLine(),
+                        'trace' => $exception->getTraceAsString(),
+                    ];
+//                }
+
+                return response()->json($data, 500);
             }
 
             return $response;
