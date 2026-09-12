@@ -2,8 +2,6 @@
 
 Laravel REST API
 
-Repository: https://github.com/GeorgiiGeorgiev/wtg
-
 ## Setup
 
 With Docker running, execute:
